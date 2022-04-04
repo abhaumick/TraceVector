@@ -14,8 +14,10 @@
 #define TRACE_VECTOR_HPP
 
 #include <cstddef>
+#include <cassert>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <filesystem>
 #include <string>
 #include <map>
@@ -23,6 +25,27 @@
 enum class page_type_t{
   PAGE_RAW,
   PAGE_STRING
+};
+
+enum class line_type {
+  EMPTY,
+  TB_START,
+  TB_DIM,
+  TB_END,
+  WARP_ID,
+  WARP_INSTS,
+  INSTR
+};
+
+class warp_trace {
+public:
+  unsigned tb_id_x;
+  unsigned tb_id_y;
+  unsigned tb_id_z;
+  unsigned warp_id;
+  unsigned num_instr;
+  size_t file_start;
+  size_t file_end;
 };
 
   /*
@@ -62,7 +85,9 @@ class trace_vector {
 public:
 
 
-  trace_vector() {
+  trace_vector() :
+    size(10),
+    page_size(4) {
     size = 10;
     page_size = 4;
     this->page_buffer.reserve(size);
@@ -70,16 +95,21 @@ public:
 
   ~trace_vector() {
     this->delete_page_buffer();
+    if (this->file_stream->is_open()) {
+      this->file_stream->close();
+    }
   }
 
   int init(const std::string& filePath, size_t file_offset = 0);
+  std::string& at(size_t index);
 
-
+  int map_file(std::ifstream & handle);
 protected:
 
 
   int setBackingFile(const std::string & file_path);
   int setBackingFile(const std::ifstream & file_handle);
+
 
   int insert_page(int insert_loc, size_t vector_start, 
     std::ifstream & handle, size_t file_offset = 0);
@@ -95,7 +125,7 @@ private:
   int LRI;
   int page_size;
   std::vector <page_entry> page_buffer;
-  std::map <int, page_entry*> page_map;
+  std::vector <warp_trace> page_map;
 };
 
 
@@ -120,6 +150,11 @@ int trace_vector<T>::init(const std::string& file_path, size_t file_offset) {
     for (auto idx = 0; idx < this->size; ++ idx) {
       this->page_buffer.emplace_back();
     }
+
+    // Map File
+    map_file(file_handle);
+
+    file_handle.seekg(0);
 
     // Read in first pages into page_buffer
     size_t vector_start = 0;
@@ -204,6 +239,97 @@ int trace_vector<T>::delete_page_buffer() {
   }
   return 0;
 }
+
+template <typename T>
+std::string& trace_vector<T>::at(size_t index) {
+  // Check if present in buffer
+  for (auto& pte : this->page_buffer) {
+    if (index >= pte.vector_start && index <= pte.vector_end) {
+      auto vector_offset = index - pte.vector_start;
+      auto& page_vector = *(pte.page_ptr);
+      return page_vector[vector_offset];
+    }
+  }
+  // Not Found
+  
+    // Translate to file_offset
+    // Find victim page
+
+  std::string * a = new std::string;
+  return *a;
+}
+
+
+template <typename T>
+int trace_vector<T>::map_file(std::ifstream & handle) {
+  bool start_of_tb_stream_found = false;
+  unsigned instr_idx;
+  size_t line_start, line_end;
+  warp_trace t;
+
+  std::stringstream ss;
+  std::string line, word1, word2, word3, word4;
+
+  while (! handle.eof()) {
+    line_start = handle.tellg();
+    std::getline(handle, line);
+    line_end = handle.tellg();
+    ss.clear();
+
+    if (line.length() == 0)
+      continue;
+    else {
+      ss.str(line);
+      ss >> word1 >> word2 >> word3 >> word4;
+      if (word1 == "#BEGIN_TB") {
+        if (!start_of_tb_stream_found) {
+          start_of_tb_stream_found = true;
+          t.file_start = line_start;
+          std::cout << " TB Start \n";
+        } 
+        else {
+          assert(0 && "Parsing error: thread block start before "  
+            "the previous one finishes");
+          t.file_end = line_end;
+        }
+      } 
+      else if (word1 == "#END_TB") {
+        assert(start_of_tb_stream_found);
+        t.file_end = line_end;
+        std::cout << line << " TB End ";
+        break;  // end of TB stream
+      } 
+      else if (word1 == "thread" && word2 == "block") {
+        assert(start_of_tb_stream_found);
+        std::cout << "tb dim \n";
+        sscanf_s(line.c_str(), "thread block = %d,%d,%d", &t.tb_id_x,
+          &t.tb_id_y, &t.tb_id_z);
+      } 
+      else if (word1 == "warp") {
+        // the start of new warp stream
+        assert(start_of_tb_stream_found);
+        sscanf_s(line.c_str(), "warp = %d", &t.warp_id);
+        std::cout << line << std::endl;
+      }
+      else if (word1 == "insts") {
+        assert(start_of_tb_stream_found);
+        sscanf_s(line.c_str(), "insts = %d", &t.num_instr);
+        // std::cout << line << std::endl;
+        instr_idx = 0;
+      } 
+      else {
+        assert(start_of_tb_stream_found);
+        // parse from string
+        instr_idx ++;
+      }
+    }
+  }
+  
+  this->page_map.push_back(t);
+  return 0;
+}
+
+
 
 
 #endif // TRACE_VECTOR_HPP
