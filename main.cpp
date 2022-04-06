@@ -21,22 +21,23 @@ int main(int argc, char ** argv) {
   // testPageBuffer();
   
 
-  std::cout << "Test trace_vector \n";
+  // std::cout << "Test trace_vector \n";
+  // trace_vector<int> tv;
+  // tv.init("D:/Work/Purdue/Research/TraceVector/trace.log");
+  // auto& retVal = tv.at(1);
+  // std::cout << retVal << " @ " << 1 << " \n";
+  // retVal.append("hh");
+  // std::cout << tv.at(0) << " @ " << 0 << " \n";
+  // std::cout << tv.at(1) << " @ " << 1 << " \n";
+
+  std::cout << "\n\n Test map_file \n";
   trace_vector<int> tv;
-  tv.init("D:/Work/Purdue/Research/TraceVector/trace.log");
-  auto& retVal = tv.at(1);
-  std::cout << retVal << " @ " << 1 << " \n";
-  retVal.append("hh");
+  std::ifstream f;
+  tv.init("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg");
+  
   std::cout << tv.at(0) << " @ " << 0 << " \n";
   std::cout << tv.at(1) << " @ " << 1 << " \n";
 
-  std::cout << "\n\n Test map_file \n";
-  trace_vector<int> tv2;
-  std::ifstream f;
-  f.open("D:/Work/Purdue/Research/TraceVector/trace.log");
-  tv2.map_file(f);
-  tv2.map_file(f);
-  tv2.map_file(f);
 
   return 0;
 }

@@ -39,11 +39,27 @@ enum class line_type {
 
 class warp_trace {
 public:
+  warp_trace (unsigned w_id, unsigned n_instr) :
+    warp_id(w_id),
+    num_instrs(n_instr) {
+    ;
+  }
+
+  ~warp_trace () {
+    page_map.clear();
+  }
+
+  unsigned warp_id;
+  unsigned num_instrs;
+  std::map <size_t, size_t> page_map;
+};
+
+class tb_trace {
+public:
   unsigned tb_id_x;
   unsigned tb_id_y;
   unsigned tb_id_z;
-  unsigned warp_id;
-  unsigned num_instr;
+  std::vector <warp_trace *> warps;
   size_t file_start;
   size_t file_end;
 };
@@ -103,7 +119,7 @@ public:
   int init(const std::string& filePath, size_t file_offset = 0);
   std::string& at(size_t index);
 
-  int map_file(std::ifstream & handle);
+  int map_tb_to_file(std::ifstream & handle);
 protected:
 
 
@@ -125,7 +141,7 @@ private:
   int LRI;
   int page_size;
   std::vector <page_entry> page_buffer;
-  std::vector <warp_trace> page_map;
+  tb_trace tb_map;
 };
 
 
@@ -152,7 +168,7 @@ int trace_vector<T>::init(const std::string& file_path, size_t file_offset) {
     }
 
     // Map File
-    map_file(file_handle);
+    this->map_tb_to_file(file_handle);
 
     file_handle.seekg(0);
 
@@ -253,6 +269,8 @@ std::string& trace_vector<T>::at(size_t index) {
   // Not Found
   
     // Translate to file_offset
+    auto line_offset = index;
+    auto page_id = index / page_size;  
     // Find victim page
 
   std::string * a = new std::string;
@@ -261,11 +279,14 @@ std::string& trace_vector<T>::at(size_t index) {
 
 
 template <typename T>
-int trace_vector<T>::map_file(std::ifstream & handle) {
+int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
   bool start_of_tb_stream_found = false;
   unsigned instr_idx;
+  unsigned warp_id;
+  unsigned num_instrs;
   size_t line_start, line_end;
-  warp_trace t;
+  tb_trace &t = this->tb_map;
+  t.warps.clear();
 
   std::stringstream ss;
   std::string line, word1, word2, word3, word4;
@@ -296,7 +317,7 @@ int trace_vector<T>::map_file(std::ifstream & handle) {
       else if (word1 == "#END_TB") {
         assert(start_of_tb_stream_found);
         t.file_end = line_end;
-        std::cout << line << " TB End ";
+        std::cout << line << " TB End \n";
         break;  // end of TB stream
       } 
       else if (word1 == "thread" && word2 == "block") {
@@ -308,24 +329,39 @@ int trace_vector<T>::map_file(std::ifstream & handle) {
       else if (word1 == "warp") {
         // the start of new warp stream
         assert(start_of_tb_stream_found);
-        sscanf_s(line.c_str(), "warp = %d", &t.warp_id);
-        std::cout << line << std::endl;
+        sscanf_s(line.c_str(), "warp = %d", &warp_id);
       }
       else if (word1 == "insts") {
         assert(start_of_tb_stream_found);
-        sscanf_s(line.c_str(), "insts = %d", &t.num_instr);
-        // std::cout << line << std::endl;
+        sscanf_s(line.c_str(), "insts = %d", &num_instrs);
+        // Check warp already exists
+        if (warp_id >= t.warps.size()) {
+          t.warps.push_back(new warp_trace(warp_id, num_instrs));
+        }
+        else {
+          assert(0 && "Warp already exists in TB");
+        }
+        std::cout << line << std::endl;
         instr_idx = 0;
       } 
       else {
-        assert(start_of_tb_stream_found);
-        // parse from string
-        instr_idx ++;
+        if (word1[0] == '#' || word1[0] == '-') {
+          // Ignore Config / Info line
+          ;
+        }
+        else {
+          assert(start_of_tb_stream_found);
+          // Insert in page map IF page boundary
+          if (instr_idx % this->page_size) {
+            t.warps[warp_id]->page_map[instr_idx] = line_start;
+          }
+          instr_idx ++;
+        }
       }
     }
   }
   
-  this->page_map.push_back(t);
+  // std::copy(this->tb_map, t);
   return 0;
 }
 
