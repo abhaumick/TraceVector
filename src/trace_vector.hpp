@@ -21,6 +21,9 @@
 #include <filesystem>
 #include <string>
 #include <map>
+#include <set>
+
+#include "warp_trace.hpp"
 
 enum class page_type_t{
   PAGE_RAW,
@@ -37,29 +40,15 @@ enum class line_type {
   INSTR
 };
 
-class warp_trace {
-public:
-  warp_trace (unsigned w_id, unsigned n_instr) :
-    warp_id(w_id),
-    num_instrs(n_instr) {
-    ;
-  }
 
-  ~warp_trace () {
-    page_map.clear();
-  }
 
-  unsigned warp_id;
-  unsigned num_instrs;
-  std::map <size_t, size_t> page_map;
-};
 
 class tb_trace {
 public:
   unsigned tb_id_x;
   unsigned tb_id_y;
   unsigned tb_id_z;
-  std::vector <warp_trace *> warps;
+  std::vector <warp_trace <std::string>*> warps;
   size_t file_start;
   size_t file_end;
 };
@@ -111,15 +100,20 @@ public:
 
   ~trace_vector() {
     this->delete_page_buffer();
-    if (this->file_stream->is_open()) {
-      this->file_stream->close();
-    }
+    // if (this->file_stream->is_open()) {
+    //   this->file_stream->close();
+    // }
   }
 
   int init(const std::string& filePath, size_t file_offset = 0);
   std::string& at(size_t index);
 
   int map_tb_to_file(std::ifstream & handle);
+
+  tb_trace& get_tb_trace(void) {
+    return tb_map;
+  }
+
 protected:
 
 
@@ -129,8 +123,10 @@ protected:
 
   int insert_page(int insert_loc, size_t vector_start, 
     std::ifstream & handle, size_t file_offset = 0);
+  
   int remove_page(int loc);
   int delete_page_buffer();
+
 
 
 private:
@@ -336,7 +332,7 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
         sscanf_s(line.c_str(), "insts = %d", &num_instrs);
         // Check warp already exists
         if (warp_id >= t.warps.size()) {
-          t.warps.push_back(new warp_trace(warp_id, num_instrs));
+          t.warps.push_back(new warp_trace<std::string>(warp_id, num_instrs));
         }
         else {
           assert(0 && "Warp already exists in TB");
@@ -352,8 +348,9 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
         else {
           assert(start_of_tb_stream_found);
           // Insert in page map IF page boundary
-          if (instr_idx % this->page_size) {
-            t.warps[warp_id]->page_map[instr_idx] = line_start;
+          if (instr_idx % this->page_size == 0) {
+            auto page_idx = instr_idx / page_size;
+            t.warps[warp_id]->page_map[page_idx] = line_start;
           }
           instr_idx ++;
         }

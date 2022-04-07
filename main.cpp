@@ -21,11 +21,23 @@ int main(int argc, char ** argv) {
   std::cout << "\n\n Test map_file \n";
   trace_vector<int> tv;
   std::ifstream f;
-  tv.init("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg");
-  
-  std::cout << tv.at(0) << " @ " << 0 << " \n";
-  std::cout << tv.at(1) << " @ " << 1 << " \n";
+  f.open("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg");
+  // tv.init("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg");
+  tv.map_tb_to_file(f);
+  auto w0 = tv.get_tb_trace().warps[0];
+  w0->init(f);
 
+  for (auto i = 0; i < 4; ++ i) {
+    std::cout << w0->at(i) << "\n";
+  }
 
+  std::string line;
+  f.seekg(561);
+  std::getline(f, line);
+
+  std::cout << "\n" << line << " \n";
+  if (f.is_open()) {
+    f.close();
+  }
   return 0;
 }
