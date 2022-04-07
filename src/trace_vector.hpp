@@ -280,7 +280,8 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
   unsigned instr_idx;
   unsigned warp_id;
   unsigned num_instrs;
-  size_t line_start, line_end;
+  size_t line_start = 0;
+  size_t line_end = 0;
   tb_trace &t = this->tb_map;
   t.warps.clear();
 
@@ -288,13 +289,15 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
   std::string line, word1, word2, word3, word4;
 
   while (! handle.eof()) {
-    line_start = handle.tellg();
+    // line_start = handle.tellg();
     std::getline(handle, line);
-    line_end = handle.tellg();
+    line_end = line_end + line.size() + 1;
     ss.clear();
 
-    if (line.length() == 0)
+    if (line.length() == 0) {
+      line_start = line_start + 1;
       continue;
+    }
     else {
       ss.str(line);
       ss >> word1 >> word2 >> word3 >> word4;
@@ -302,7 +305,7 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
         if (!start_of_tb_stream_found) {
           start_of_tb_stream_found = true;
           t.file_start = line_start;
-          std::cout << " TB Start \n";
+          // std::cout << " TB Start \n";
         } 
         else {
           assert(0 && "Parsing error: thread block start before "  
@@ -313,12 +316,12 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
       else if (word1 == "#END_TB") {
         assert(start_of_tb_stream_found);
         t.file_end = line_end;
-        std::cout << line << " TB End \n";
+        // std::cout << line << " TB End \n";
         break;  // end of TB stream
       } 
       else if (word1 == "thread" && word2 == "block") {
         assert(start_of_tb_stream_found);
-        std::cout << "tb dim \n";
+        // std::cout << "tb dim \n";
         sscanf_s(line.c_str(), "thread block = %d,%d,%d", &t.tb_id_x,
           &t.tb_id_y, &t.tb_id_z);
       } 
@@ -337,7 +340,7 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
         else {
           assert(0 && "Warp already exists in TB");
         }
-        std::cout << line << std::endl;
+        // std::cout << line << std::endl;
         instr_idx = 0;
       } 
       else {
@@ -356,6 +359,8 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
         }
       }
     }
+
+    line_start = line_start + line.size() + 1;
   }
   
   // std::copy(this->tb_map, t);
