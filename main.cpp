@@ -27,7 +27,7 @@ int main(int argc, char ** argv) {
   auto w0 = tv.get_tb_trace().warps[0];
   w0->init(f);
 
-  for (auto i = 0; i < 10; ++ i) {
+  for (auto i = 0; i < 45; ++ i) {
     std::cout << w0->at(i) << "\n";
   }
 

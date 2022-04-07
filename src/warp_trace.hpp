@@ -88,7 +88,7 @@ T& warp_trace<T>::at(int index) {
   auto search_idx = page_avail.find(at_page);
   if (search_idx != page_avail.end()) {
     // In Buffer
-    auto page_idx = std::distance(search_idx, page_avail.begin());
+    auto page_idx = std::distance(page_avail.begin(), search_idx);
     return page_buffer[page_idx][at_offset];
   }
 
