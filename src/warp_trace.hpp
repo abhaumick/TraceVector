@@ -23,41 +23,16 @@ class warp_trace {
 public:
   typedef typename std::vector <T> page_type;
 
-  warp_trace (unsigned w_id, unsigned n_instr) :
-    warp_id(w_id),
-    num_instrs(n_instr)
-  {
-    page_size = TRACE_PAGE_SIZE;
-    max_pages = (n_instr + TRACE_PAGE_SIZE - 1) / TRACE_PAGE_SIZE; 
-    buffer_size = std::min(max_pages, (unsigned) TRACE_PAGE_BUFFER_SIZE);
-  }
+  warp_trace (unsigned w_id, unsigned n_instr);
+  ~warp_trace();
 
-  ~warp_trace () {
-    page_map.clear();
-    page_buffer.clear();
-    page_avail.clear();
-    file_handle = nullptr;
-  }
+  T& at(int index);
+  constexpr size_t size(void) const { return _size; }
 
-  int init (std::ifstream& handle)
-  {
-    file_handle = &handle;
-
-    page_buffer.reserve(buffer_size);
-    for (auto i = 0; i < buffer_size; ++ i) {
-      page_buffer.emplace_back();
-      fetch_page(i, i);
-    }
-    return 0;
-  }
-
-  int fetch_page(int page_num, int index);
-  int evict_page(int index);
+  int init (std::ifstream& handle);
 
   friend std::ostream& operator<<(std::ostream& o, const warp_trace<T>& wt);
 
-  unsigned warp_id;
-  unsigned num_instrs;
   unsigned page_size;
   unsigned max_pages;
   unsigned buffer_size;
@@ -67,8 +42,43 @@ public:
   std::vector <page_type> page_buffer;
   int LRU, MRI;
 
-  T& at(int index);
+protected:
+  unsigned _id;
+  unsigned _size;
+
+  int fetch_page(int page_num, int index);
+  int evict_page(int index);
 };
+
+template <typename T>
+warp_trace<T>::warp_trace (unsigned w_id, unsigned n_instr) :
+  _id(w_id),
+  _size(n_instr)
+{
+  page_size = TRACE_PAGE_SIZE;
+  max_pages = (n_instr + TRACE_PAGE_SIZE - 1) / TRACE_PAGE_SIZE; 
+  buffer_size = std::min(max_pages, (unsigned) TRACE_PAGE_BUFFER_SIZE);
+}
+
+template <typename T>
+warp_trace<T>::~warp_trace () {
+  page_map.clear();
+  page_buffer.clear();
+  page_avail.clear();
+  file_handle = nullptr;
+}
+
+template <typename T>
+int warp_trace<T>::init(std::ifstream& handle) {
+  file_handle = &handle;
+
+  page_buffer.reserve(buffer_size);
+  for (auto i = 0; i < buffer_size; ++ i) {
+    page_buffer.emplace_back();
+    fetch_page(i, i);
+  }
+  return 0;
+}
 
 template <typename T>
 T& warp_trace<T>::at(int index) {
@@ -82,6 +92,7 @@ T& warp_trace<T>::at(int index) {
     return page_buffer[page_idx][at_offset];
   }
 
+  std::cout << "OutOfBounds \n";
   std::string a;
   return a;
 }
@@ -98,7 +109,7 @@ int warp_trace<T>::fetch_page(int page_num, int index) {
   auto& page = page_buffer[index]; 
   page.clear();
   auto file_loc = page_map[page_num];
-  file_handle->seekg(file_loc);
+  file_handle->seekg(file_loc, std::ios::beg);
 
   for (auto i = 0; i < TRACE_PAGE_SIZE; ++ i) {
     page.emplace_back();

@@ -27,15 +27,11 @@ int main(int argc, char ** argv) {
   auto w0 = tv.get_tb_trace().warps[0];
   w0->init(f);
 
-  for (auto i = 0; i < 4; ++ i) {
+  for (auto i = 0; i < 10; ++ i) {
     std::cout << w0->at(i) << "\n";
   }
 
-  std::string line;
-  f.seekg(561);
-  std::getline(f, line);
 
-  std::cout << "\n" << line << " \n";
   if (f.is_open()) {
     f.close();
   }
