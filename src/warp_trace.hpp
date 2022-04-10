@@ -26,7 +26,15 @@ public:
   warp_trace (unsigned w_id, unsigned n_instr);
   ~warp_trace();
 
+  /**
+   * @brief 
+   * 
+   * @param index 
+   * @return T& reference to T object at `index` location
+   */
   T& at(int index);
+  T& operator[] (int index);
+
   constexpr unsigned id(void) const { return _id; }
   constexpr size_t size(void) const { return _size; }
 
@@ -72,6 +80,13 @@ warp_trace<T>::~warp_trace () {
   file_handle = nullptr;
 }
 
+/**
+ * @brief 
+ * 
+ * @tparam T 
+ * @param handle 
+ * @return int 
+ */
 template <typename T>
 int warp_trace<T>::init(std::ifstream& handle) {
   file_handle = &handle;
@@ -82,8 +97,6 @@ int warp_trace<T>::init(std::ifstream& handle) {
     page_buffer.emplace_back();
     auto retVal = fetch_page(page_id, page_id);
     assert((retVal == 0) && "Trace Page Fetch Failed");
-    // Update page_avail set
-    page_set.insert(page_id);
   }
   return 0;
 }
@@ -104,12 +117,13 @@ T& warp_trace<T>::at(int index) {
       }
       ++ buffer_idx;
     }
+    assert(0 && "Found in PageSet but not in TagArray");
   }
 
   std::cout << "OutOfBounds \n";
   // Remove LRU
   auto buffer_idx = LRU;
-  page_set.erase(LRU);
+  evict_page(LRU);
 
   // Fetch page
   fetch_page(at_tag, buffer_idx);
@@ -117,6 +131,11 @@ T& warp_trace<T>::at(int index) {
   update_lru(buffer_idx);
   // New page will always be at buffer_idx
   return page_buffer[buffer_idx][at_offset];
+}
+
+template <typename T>
+T& warp_trace<T>::operator[] (int index) {
+  return at(index);
 }
 
 template <typename T>
@@ -146,6 +165,13 @@ int warp_trace<T>::fetch_page(int page_tag, int index) {
 }
 
 template <typename T>
+int warp_trace<T>::evict_page(int index) {
+  auto page_tag = tag_array[index]; 
+  page_set.erase(page_tag);
+  return 0;
+}
+
+template <typename T>
 void warp_trace<T>::update_lru(int index) {
   LRU = (LRU + 1) % buffer_size;
 }
@@ -159,7 +185,7 @@ std::ostream& operator<<(std::ostream& os, warp_trace<T>& wt) {
   for (auto idx = 0; idx < wt.buffer_size; ++ idx) {
     os << " " << idx << " -> " << wt.tag_array[idx];
     if (idx == wt.LRU) os << " <- LRU ";
-    os << "\n";
+    os << " , ";
   }
   os << std::endl;
   return os;

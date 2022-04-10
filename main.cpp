@@ -24,11 +24,15 @@ int main(int argc, char ** argv) {
   f.open("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg");
   // tv.init("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg");
   tv.map_tb_to_file(f);
-  auto w0 = tv.get_tb_trace().warps[0];
+  auto& w0 = tv.get_tb_trace().warps[0];
   w0->init(f);
 
   for (auto i = 0; i < w0->size(); ++ i) {
     std::cout << w0->at(i) << "\n";
+  }
+
+  for (auto i = 0; i < w0->size(); ++ i) {
+    std::cout << (*w0)[i] << "\n";
   }
 
   std::cout << *w0;
