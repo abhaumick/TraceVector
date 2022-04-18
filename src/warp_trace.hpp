@@ -15,6 +15,8 @@
 #include <map>
 #include <set>
 
+#define TRACE_WARN_OUTOFBOUNDS_ENABLE
+
 #define TRACE_PAGE_SIZE ((4))
 #define TRACE_PAGE_BUFFER_SIZE ((10))
 
@@ -22,6 +24,7 @@ template <typename T>
 class warp_trace {
 public:
   typedef typename std::vector <T> page_type;
+  typedef unsigned long long addr_type;
 
   warp_trace (unsigned w_id, unsigned n_instr);
   ~warp_trace();
@@ -36,25 +39,27 @@ public:
   T& operator[] (int index);
 
   constexpr unsigned id(void) const { return _id; }
-  constexpr size_t size(void) const { return _size; }
+  constexpr addr_type size(void) const { return _size; }
 
   int init (std::ifstream& handle);
+
+  int to_bytes(std::vector <unsigned char>& v);
 
   friend std::ostream& operator<<(std::ostream& o, const warp_trace<T>& wt);
 
   unsigned page_size;
   unsigned max_pages;
   unsigned buffer_size;
-  std::map <size_t, size_t> page_map;
-  std::set <size_t> page_set;
-  std::vector <size_t> tag_array;
+  std::map <addr_type, addr_type> page_map;
+  std::set <addr_type> page_set;
+  std::vector <addr_type> tag_array;
   std::ifstream* file_handle;
   std::vector <page_type> page_buffer;
   int LRU, MRI;
 
 protected:
   unsigned _id;
-  unsigned _size;
+  addr_type _size;
 
   int fetch_page(int page_num, int index);
   int evict_page(int index);
@@ -120,7 +125,10 @@ T& warp_trace<T>::at(int index) {
     assert(0 && "Found in PageSet but not in TagArray");
   }
 
-  std::cout << "OutOfBounds \n";
+  #ifdef TRACE_WARN_OUTOFBOUNDS_ENABLE
+    std::cout << "OutOfBounds \n";
+  #endif
+  
   // Remove LRU
   auto buffer_idx = LRU;
   evict_page(LRU);
@@ -152,7 +160,7 @@ int warp_trace<T>::fetch_page(int page_tag, int index) {
   auto file_loc = page_map[page_tag];
   file_handle->seekg(file_loc, std::ios::beg);
 
-  auto fetch_size = std::min(page_size, _size - (page_tag - 1) * page_size);
+  auto fetch_size = std::min((addr_type) page_size, _size - (page_tag - 1) * page_size);
   for (auto i = 0; i < page_size; ++ i) {
     page.emplace_back();
     std::getline(*file_handle, page[i]);

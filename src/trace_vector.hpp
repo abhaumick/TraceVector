@@ -43,7 +43,7 @@ enum class line_type {
 
 
 
-class tb_trace {
+class tb_trace_old {
 public:
   unsigned tb_id_x;
   unsigned tb_id_y;
@@ -110,7 +110,7 @@ public:
 
   int map_tb_to_file(std::ifstream & handle);
 
-  tb_trace& get_tb_trace(void) {
+  tb_trace_old& get_tb_trace(void) {
     return tb_map;
   }
 
@@ -137,7 +137,7 @@ private:
   int LRI;
   int page_size;
   std::vector <page_entry> page_buffer;
-  tb_trace tb_map;
+  tb_trace_old tb_map;
 };
 
 
@@ -282,7 +282,7 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
   unsigned num_instrs;
   size_t line_start = 0;
   size_t line_end = 0;
-  tb_trace &t = this->tb_map;
+  tb_trace_old &t = this->tb_map;
   t.warps.clear();
 
   std::stringstream ss;
