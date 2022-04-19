@@ -45,7 +45,7 @@ public:
   warp_trace<T>& get_warp(unsigned warp_id) const { return warps[warp_id]; }
 
   std::vector <warp_trace <T>> warps;
-  
+
 protected:
   std::set <int> _warp_set;
 
@@ -58,6 +58,8 @@ protected:
   size_t _page_size;
 
   int map_tb_to_file(std::ifstream & handle);
+
+  int to_bytes(std::vector <unsigned char>& v) const ;
 
 private:
   dim3 _id;
@@ -115,7 +117,6 @@ int tb_trace<T>::init(const std::string& file_path, size_t file_offset) {
   }
   return 0;
 }
-
 
 template <typename T>
 int tb_trace<T>::map_tb_to_file(std::ifstream & handle) {
@@ -206,6 +207,21 @@ int tb_trace<T>::map_tb_to_file(std::ifstream & handle) {
   return 0;
 }
 
+template <typename T>
+int tb_trace<T>::to_bytes(std::vector <unsigned char>& v) const {
+  auto estimated_size = (8) * sizeof(addr_type);
+  std::cout << "estimated_size = " << estimated_size << "\n";
+  v.reserve(v.size() + estimated_size);
+
+  pack(_id.x, v);
+  pack(_id.y, v);
+  pack(_id.z, v);
+  pack(_size, v);
+
+  for (auto& warp : warps) {
+    warp.to_bytes(v);
+  }
+}
 
 #endif  // TB_TRACE_HPP
 

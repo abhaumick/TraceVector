@@ -18,6 +18,7 @@
 
 int testWarpTrace();
 int testTbTrace();
+int testToBytes();
 
 int main(int argc, char ** argv) {
   std::cout << "Hello TraceVector!\n";
@@ -26,7 +27,10 @@ int main(int argc, char ** argv) {
   // testWarpTrace();
 
   std::cout << "\n\n Test tb_trace \n";
-  testTbTrace();
+  // testTbTrace();
+
+  std::cout << "\n\n Test Serialization \n ";
+  testToBytes();
 
   return 0;
 }
@@ -94,6 +98,24 @@ int testTbTrace(void) {
     if (instr_iter == instr_ids.end())
       break;
   }
+
+  return 0;
+}
+
+int testToBytes(void) {
+  tb_trace <std::string> tb;
+  tb.init("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg", 0);
+
+  std::vector <unsigned char> v;
+  tb.warps[4].to_bytes(v);
+
+  std::cout << "Bytes Size = " << v.size() << "\n";
+  for (auto byte : v) {
+    std::cout << std::hex << (int)byte << " ";
+  }
+  std::cout << std::dec << "\n";
+
+  std::cout << 
 
   return 0;
 }

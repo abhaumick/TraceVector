@@ -24,7 +24,12 @@ template <typename T>
 class warp_trace {
 public:
   typedef typename std::vector <T> page_type;
-  typedef unsigned long long addr_type;
+  typedef uint64_t addr_type;
+
+  typedef struct __attribute__((packed)) {
+    unsigned _id;
+    addr_type size;
+  } bytes_header;
 
   warp_trace (unsigned w_id, unsigned n_instr);
   ~warp_trace();
@@ -43,7 +48,10 @@ public:
 
   int init (std::ifstream& handle);
 
-  int to_bytes(std::vector <unsigned char>& v);
+  int to_bytes(std::vector <unsigned char>& v) const;
+  
+  template <typename T2> 
+  friend int pack(T2 value, std::vector <unsigned char>& v);
 
   friend std::ostream& operator<<(std::ostream& o, const warp_trace<T>& wt);
 
@@ -64,6 +72,7 @@ protected:
   int fetch_page(int page_num, int index);
   int evict_page(int index);
   void update_lru(int index);
+
 };
 
 template <typename T>
@@ -128,7 +137,7 @@ T& warp_trace<T>::at(int index) {
   #ifdef TRACE_WARN_OUTOFBOUNDS_ENABLE
     std::cout << "OutOfBounds \n";
   #endif
-  
+
   // Remove LRU
   auto buffer_idx = LRU;
   evict_page(LRU);
@@ -185,6 +194,32 @@ void warp_trace<T>::update_lru(int index) {
 }
 
 template <typename T>
+int warp_trace<T>::to_bytes(std::vector <unsigned char>& v) const {
+  auto estimated_size = (8 + 2 * page_map.size()) * sizeof(addr_type);
+  std::cout << "estimated_size = " << estimated_size << "\n";
+  v.reserve(v.size() + estimated_size);
+
+  pack(_id, v);
+  pack(_size, v);
+  pack(page_size, v);
+  pack(max_pages, v);
+  pack(buffer_size, v);
+  pack(LRU, v);
+  pack(MRI, v);
+
+  for(auto& item : page_map) {
+    pack(item.first, v);
+    pack(item.second, v);
+  }
+
+  // Only for complete serialization
+  // for(auto& item : tag_array) {
+  //   pack(item,v);
+  // }
+  return 0;
+}
+
+template <typename T>
 std::ostream& operator<<(std::ostream& os, warp_trace<T>& wt) {
   os << "Warp " << wt.id() << " with " << wt.size() << " instructions. \n";
   os << wt.buffer_size << " pages of size " << wt.buffer_size;
@@ -197,6 +232,16 @@ std::ostream& operator<<(std::ostream& os, warp_trace<T>& wt) {
   }
   os << std::endl;
   return os;
+}
+
+template <typename T2> 
+inline int pack(T2 value, std::vector <unsigned char>& v) {
+  #pragma unroll
+  for (auto i = 0; i < sizeof(T2); ++ i) {
+    v.push_back((unsigned char) (value & 0x00FF));
+    value = value >> 8;
+  }
+  return 0;
 }
 
 #endif  // WARP_TRACE_HPP
