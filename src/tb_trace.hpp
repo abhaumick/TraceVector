@@ -170,7 +170,7 @@ int tb_trace<T>::map_tb_to_file(size_t offset) {
 
   while (! file_handle.eof()) {
     std::getline(file_handle, line);
-    line_end = line_end + line.size() + 1;
+    line_end = line_start + line.size();
     ss.clear();
 
     if (line.length() == 0) {
@@ -239,7 +239,10 @@ int tb_trace<T>::map_tb_to_file(size_t offset) {
       }
     }
 
-    line_start = line_start + line.size() + 1;
+    // std::cout << "\"" << line << "\" = " << line.size() + 1 << " "
+    //   << line_start << " to " << line_end << " = " << line_end - line_start << " \n";  
+
+    line_start = line_end + 1;
   }
   // std::cout << "TB " << file_trace_start << " - " << file_trace_end << "\n";
   // std::copy(this->tb_map, t);
