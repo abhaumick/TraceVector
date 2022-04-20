@@ -16,8 +16,12 @@
 #include "src/tb_trace.hpp"
 #include "src/warp_trace.hpp"
 
+const unsigned numTB = 10;
+const unsigned sample_size = 100;
+
 int testWarpTrace();
 int testTbTrace();
+int testGpuTrace();
 int testToBytes();
 
 int main(int argc, char ** argv) {
@@ -28,6 +32,9 @@ int main(int argc, char ** argv) {
 
   std::cout << "\n\n Test tb_trace \n";
   // testTbTrace();
+
+  std::cout << "\n\n Test gpu tb_trace - " << numTB << " TBs \n";
+  testGpuTrace();
 
   std::cout << "\n\n Test Serialization \n ";
   testToBytes();
@@ -62,8 +69,6 @@ int testWarpTrace(void) {
 }
 
 int testTbTrace(void) {
-
-  const unsigned sample_size = 100;
 
   std::vector <tb_trace <std::string>> tb;
   tb.emplace_back();
@@ -115,7 +120,22 @@ int testToBytes(void) {
   }
   std::cout << std::dec << "\n";
 
-  std::cout << 
+  return 0;
+}
+
+int testGpuTrace(void) {
+
+  std::vector <tb_trace <std::string>> tb;
+  size_t offset = 0;
+  tb.reserve(2);
+  for (auto idx = 0; idx < numTB; ++ idx) {
+    tb.emplace_back();
+    tb[idx].init("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg", offset);
+    offset = tb[idx].get_file_end();
+    std::cout << idx << " Done @ " << offset << "\n";
+  }
+
+  std::cout << "# Warps = " << tb[0].size() << "\n" ;
 
   return 0;
 }
