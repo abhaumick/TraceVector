@@ -203,7 +203,7 @@ int tb_trace<T>::map_tb_to_file(size_t offset) {
         assert(start_of_tb_stream_found);
         #ifdef __linux__
           sscanf(line.c_str(), "thread block = %d,%d,%d", &_id.x, &_id.y, &_id.z);
-        #elif __WIN32
+        #elif _WIN32
           sscanf_s(line.c_str(), "thread block = %d,%d,%d", &_id.x, &_id.y, &_id.z);
         #endif
       } 
@@ -212,7 +212,7 @@ int tb_trace<T>::map_tb_to_file(size_t offset) {
         assert(start_of_tb_stream_found);
         #ifdef __linux__
           sscanf(line.c_str(), "warp = %d", &warp_id);
-        #elif __WIN32
+        #elif _WIN32
           sscanf_s(line.c_str(), "warp = %d", &warp_id);
         #endif
       }
@@ -220,7 +220,7 @@ int tb_trace<T>::map_tb_to_file(size_t offset) {
         assert(start_of_tb_stream_found);
         #ifdef __linux__
           sscanf(line.c_str(), "insts = %d", &num_instrs);
-        #elif __WIN32
+        #elif _WIN32
           sscanf_s(line.c_str(), "insts = %d", &num_instrs);
         #endif
         // Check warp already exists

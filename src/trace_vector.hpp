@@ -322,17 +322,29 @@ int trace_vector<T>::map_tb_to_file(std::ifstream & handle) {
       else if (word1 == "thread" && word2 == "block") {
         assert(start_of_tb_stream_found);
         // std::cout << "tb dim \n";
-        sscanf(line.c_str(), "thread block = %d,%d,%d", &t.tb_id_x,
-          &t.tb_id_y, &t.tb_id_z);
+        #ifdef __linux__
+          sscanf(line.c_str(), "thread block = %d,%d,%d", &t.tb_id_x, &t.tb_id_y, &t.tb_id_z);
+        #elif _WIN32
+          sscanf_s(line.c_str(), "thread block = %d,%d,%d", &t.tb_id_x, &t.tb_id_y, &t.tb_id_z);
+        #endif
+
       } 
       else if (word1 == "warp") {
         // the start of new warp stream
         assert(start_of_tb_stream_found);
-        sscanf(line.c_str(), "warp = %d", &warp_id);
+        #ifdef __linux__
+          sscanf(line.c_str(), "warp = %d", &warp_id);
+        #elif _WIN32
+          sscanf_s(line.c_str(), "warp = %d", &warp_id);
+        #endif
       }
       else if (word1 == "insts") {
         assert(start_of_tb_stream_found);
-        sscanf(line.c_str(), "insts = %d", &num_instrs);
+        #ifdef __linux__
+          sscanf(line.c_str(), "insts = %d", &num_instrs);
+        #elif _WIN32
+          sscanf_s(line.c_str(), "insts = %d", &num_instrs);
+        #endif
         // Check warp already exists
         if (warp_id >= t.warps.size()) {
           t.warps.push_back(new warp_trace<std::string>(warp_id, num_instrs));

@@ -112,7 +112,7 @@ int testTbTrace(void) {
 
 int testToBytes(void) {
   tb_trace <std::string> tb;
-  tb.init("trace.log", 0);
+  tb.init("../trace.log", 0);
 
   std::vector <unsigned char> v;
   tb.warps[4].to_bytes(v);
@@ -133,7 +133,7 @@ int testGpuTrace(void) {
   tb.reserve(numTB);
   for (auto idx = 0U; idx < numTB; ++ idx) {
     tb.emplace_back();
-    tb[idx].init("trace.log", offset);
+    tb[idx].init("../trace.log", offset);
     offset = tb[idx].get_file_end();
     // std::cout << idx << " Done @ " << offset << "\n";
   }
