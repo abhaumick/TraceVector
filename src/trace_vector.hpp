@@ -121,10 +121,10 @@ protected:
   int setBackingFile(const std::ifstream & file_handle);
 
 
-  int insert_page(int insert_loc, size_t vector_start, 
+  int insert_page(unsigned insert_loc, size_t vector_start, 
     std::ifstream & handle, size_t file_offset = 0);
   
-  int remove_page(int loc);
+  int remove_page(unsigned loc);
   int delete_page_buffer();
 
 
@@ -180,7 +180,7 @@ int trace_vector<T>::init(const std::string& file_path, size_t file_offset) {
 
 
 template <typename T>
-int trace_vector<T>::insert_page(int loc, size_t vector_start, 
+int trace_vector<T>::insert_page(unsigned loc, size_t vector_start, 
   std::ifstream & handle, size_t file_offset) {
   // Create new empty page
   std::vector <std::string> * new_page = new std::vector <std::string>;
@@ -230,7 +230,7 @@ int trace_vector<T>::insert_page(int loc, size_t vector_start,
 }
 
 template <typename T>
-int trace_vector<T>::remove_page(int loc) {
+int trace_vector<T>::remove_page(unsigned loc) {
   //  Check buffer_size
   if (this->page_buffer.size() >= loc) {
     // Check pte
@@ -246,7 +246,7 @@ int trace_vector<T>::remove_page(int loc) {
 
 template <typename T>
 int trace_vector<T>::delete_page_buffer() {
-  for (auto idx = 0; idx < this->page_buffer.size(); ++ idx) {
+  for (auto idx = 0U; idx < this->page_buffer.size(); ++ idx) {
     remove_page(idx);
   }
   return 0;

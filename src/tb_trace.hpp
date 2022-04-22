@@ -201,17 +201,28 @@ int tb_trace<T>::map_tb_to_file(size_t offset) {
       else if (word1 == "thread" && word2 == "block") {
         //  TB Dimensions
         assert(start_of_tb_stream_found);
-        sscanf(line.c_str(), "thread block = %d,%d,%d", &_id.x,
-          &_id.y, &_id.z);
+        #ifdef __linux__
+          sscanf(line.c_str(), "thread block = %d,%d,%d", &_id.x, &_id.y, &_id.z);
+        #elif __WIN32
+          sscanf_s(line.c_str(), "thread block = %d,%d,%d", &_id.x, &_id.y, &_id.z);
+        #endif
       } 
       else if (word1 == "warp") {
         // start of new warp stream
         assert(start_of_tb_stream_found);
-        sscanf(line.c_str(), "warp = %d", &warp_id);
+        #ifdef __linux__
+          sscanf(line.c_str(), "warp = %d", &warp_id);
+        #elif __WIN32
+          sscanf_s(line.c_str(), "warp = %d", &warp_id);
+        #endif
       }
       else if (word1 == "insts") {
         assert(start_of_tb_stream_found);
-        sscanf(line.c_str(), "insts = %d", &num_instrs);
+        #ifdef __linux__
+          sscanf(line.c_str(), "insts = %d", &num_instrs);
+        #elif __WIN32
+          sscanf_s(line.c_str(), "insts = %d", &num_instrs);
+        #endif
         // Check warp already exists
         if (warp_id >= warps.size()) {
           warps.emplace_back(warp_id, num_instrs);
@@ -264,6 +275,7 @@ int tb_trace<T>::to_bytes(std::vector <unsigned char>& v) const {
   for (auto& warp : warps) {
     warp.to_bytes(v);
   }
+  return v.size();
 }
 
 #endif  // TB_TRACE_HPP

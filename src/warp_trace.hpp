@@ -40,8 +40,8 @@ public:
    * @param index 
    * @return T& reference to T object at `index` location
    */
-  T& at(int index);
-  T& operator[] (int index);
+  T& at(unsigned index);
+  T& operator[] (unsigned index);
 
   constexpr unsigned id(void) const { return _id; }
   constexpr addr_type size(void) const { return _size; }
@@ -63,7 +63,7 @@ public:
   std::vector <addr_type> tag_array;
   std::ifstream* file_handle;
   std::vector <page_type> page_buffer;
-  int LRU, MRI;
+  unsigned LRU, MRI;
 
 protected:
   unsigned _id;
@@ -97,8 +97,7 @@ warp_trace<T>::~warp_trace () {
 
 template <typename T2> 
 inline int pack(T2 value, std::vector <unsigned char>& v) {
-  #pragma unroll
-  for (auto i = 0; i < sizeof(T2); ++ i) {
+  for (auto i = 0U; i < sizeof(T2); ++ i) {
     v.push_back((unsigned char) (value & 0x00FF));
     value = value >> 8;
   }
@@ -118,7 +117,7 @@ int warp_trace<T>::init(std::ifstream& handle) {
 
   page_buffer.reserve(buffer_size);
   tag_array.resize(buffer_size);
-  for (auto page_id = 0; page_id < buffer_size; ++ page_id) {
+  for (auto page_id = 0U; page_id < buffer_size; ++ page_id) {
     page_buffer.emplace_back();
     auto retVal = fetch_page(page_id, page_id);
     assert((retVal == 0) && "Trace Page Fetch Failed");
@@ -127,10 +126,10 @@ int warp_trace<T>::init(std::ifstream& handle) {
 }
 
 template <typename T>
-T& warp_trace<T>::at(int index) {
+T& warp_trace<T>::at(unsigned index) {
   assert((index < _size) && "Warp Trace Index OutOfBounds");
-  int at_tag = index / page_size;
-  int at_offset = index % page_size;
+  uint64_t at_tag = index / page_size;
+  uint64_t at_offset = index % page_size;
 
   auto search_idx = page_set.find(at_tag);
   if (search_idx != page_set.end()) {
@@ -162,7 +161,7 @@ T& warp_trace<T>::at(int index) {
 }
 
 template <typename T>
-T& warp_trace<T>::operator[] (int index) {
+T& warp_trace<T>::operator[] (unsigned index) {
   return at(index);
 }
 
@@ -181,7 +180,7 @@ int warp_trace<T>::fetch_page(int page_tag, int index) {
   file_handle->seekg(file_loc, std::ios::beg);
 
   auto fetch_size = std::min((addr_type) page_size, _size - (page_tag - 1) * page_size);
-  for (auto i = 0; i < page_size; ++ i) {
+  for (auto i = 0U; i < fetch_size; ++ i) {
     page.emplace_back();
     std::getline(*file_handle, page[i]);
   }
@@ -236,7 +235,7 @@ std::ostream& operator<<(std::ostream& os, warp_trace<T>& wt) {
   os << wt.buffer_size << " pages of size " << wt.buffer_size;
   os << " x " << typeid(T).name() << "\n";
   os << "Page Map: \n";
-  for (auto idx = 0; idx < wt.buffer_size; ++ idx) {
+  for (auto idx = 0U; idx < wt.buffer_size; ++ idx) {
     os << " " << idx << " -> " << wt.tag_array[idx];
     if (idx == wt.LRU) os << " <- LRU ";
     os << " , ";
