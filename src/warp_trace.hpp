@@ -17,7 +17,7 @@
 
 // #define TRACE_WARN_OUTOFBOUNDS_ENABLE
 
-#define TRACE_PAGE_SIZE ((4))
+#define TRACE_PAGE_SIZE ((10))
 #define TRACE_PAGE_BUFFER_SIZE ((10))
 
 template <typename T>

@@ -132,8 +132,8 @@ int tb_trace<T>::init(const std::string& file_path, size_t file_offset) {
   file_handle.open(file_path.c_str());
 
   if (! file_handle.is_open()) {
-    std::cout << "Unable to open file " << file_path.c_str() << " @ " 
-      << std::filesystem::current_path() << "\n";
+    std::cout << "Unable to open file " << file_path.c_str() << " @ \n" ;
+      // << std::filesystem::current_path() << "\n";
     return -1;
   }
   else {
