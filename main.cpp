@@ -12,6 +12,7 @@
 #include <iostream>
 #include <random>
 #include <algorithm>
+#include <chrono>
 
 #include "src/trace_vector.hpp"
 #include "src/tb_trace.hpp"
@@ -36,7 +37,8 @@ int main(int argc, char ** argv) {
   std::cout << "\n\n Test tb_trace \n";
   // testTbTrace();
 
-  std::cout << "\n\n Test gpu tb_trace - " << numTB << " TBs \n";
+  std::cout << "\n\n Test gpu tb_trace - " << numTB << " TBs " 
+    << testSize << " accesses \n";
   testGpuTrace();
 
   std::cout << "\n\n Test Serialization \n ";
@@ -130,6 +132,8 @@ int testGpuTrace(void) {
 
   std::vector <tb_trace <std::string>> tb;
   size_t offset = 0;
+
+  auto t_start = std::chrono::steady_clock::now();
   tb.reserve(numTB);
   for (auto idx = 0U; idx < numTB; ++ idx) {
     tb.emplace_back();
@@ -137,6 +141,8 @@ int testGpuTrace(void) {
     offset = tb[idx].get_file_end();
     // std::cout << idx << " Done @ " << offset << "\n";
   }
+  std::chrono::duration <float> t_init = std::chrono::steady_clock::now() - t_start;
+  std::cout << "Init Done .. " << t_init.count() << " s\n";
 
   // Generate uniform random sample
   std::random_device rand_device;
@@ -157,6 +163,8 @@ int testGpuTrace(void) {
   auto instr_gen = [&dist_instr, &mersenne_engine](){ return dist_instr(mersenne_engine); };
   std::generate(instr_indexes.begin(), instr_indexes.end(), instr_gen);
 
+  // Random Access Test
+  t_start = std::chrono::steady_clock::now();
   size_t correct_count = 0;
   for (auto i = 0; i < testSize; ++ i) {
     auto tb_idx = tb_indexes[i];
@@ -179,9 +187,37 @@ int testGpuTrace(void) {
     // std::cout << ss.str() << "  " << paged_instr << " " 
     //   << (paged_instr.find(ss.str(), 0) != std::string::npos) << " \n";
   }
+  std::chrono::duration <float> t_random = std::chrono::steady_clock::now() - t_start;
+  std::cout << "Random Access .. " << t_random.count() << " s\n";
 
   std::cout << "Correctly returned " << correct_count << " / " 
-    << testSize << " instruction strings" ;
+    << testSize << " instruction strings \n" ;
+
+  // Sequential Access Test
+  t_start = std::chrono::steady_clock::now();
+  correct_count = 0;
+  for (auto i = 0; i < testSize; ++ i) {
+    auto tb_idx = tb_indexes[i];
+    auto num_warps = tb[tb_idx].size();
+    auto warp_idx = warp_indexes[i] % num_warps;
+    auto num_instr = tb[tb_idx].warps[warp_idx].size();
+    auto instr_idx = i % num_instr;
+
+    auto paged_instr = tb[tb_idx].warps[warp_idx][instr_idx];
+    
+    std::string string_obj;
+    std::stringstream ss;
+    ss.str(string_obj);
+    ss << tb_idx << ", " << warp_idx << ", " << instr_idx << " ";
+
+    if (paged_instr.find(ss.str(), 0) != std::string::npos)
+      ++ correct_count;
+  }
+  std::chrono::duration <float> t_seq = std::chrono::steady_clock::now() - t_start;
+  std::cout << "Sequential Access .. " << t_seq.count() << " s\n";
+
+  std::cout << "Correctly returned " << correct_count << " / " 
+    << testSize << " instruction strings \n" ;
 
   return 0;
 }
