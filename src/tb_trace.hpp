@@ -31,6 +31,7 @@ typedef struct {
 template <typename T>
 class tb_trace {
 public:
+  typedef unsigned long long addr_type;
   std::vector <warp_trace <T>> warps;
 
 protected:
@@ -200,17 +201,17 @@ int tb_trace<T>::map_tb_to_file(size_t offset) {
       else if (word1 == "thread" && word2 == "block") {
         //  TB Dimensions
         assert(start_of_tb_stream_found);
-        sscanf_s(line.c_str(), "thread block = %d,%d,%d", &_id.x,
+        sscanf(line.c_str(), "thread block = %d,%d,%d", &_id.x,
           &_id.y, &_id.z);
       } 
       else if (word1 == "warp") {
         // start of new warp stream
         assert(start_of_tb_stream_found);
-        sscanf_s(line.c_str(), "warp = %d", &warp_id);
+        sscanf(line.c_str(), "warp = %d", &warp_id);
       }
       else if (word1 == "insts") {
         assert(start_of_tb_stream_found);
-        sscanf_s(line.c_str(), "insts = %d", &num_instrs);
+        sscanf(line.c_str(), "insts = %d", &num_instrs);
         // Check warp already exists
         if (warp_id >= warps.size()) {
           warps.emplace_back(warp_id, num_instrs);

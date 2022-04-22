@@ -94,6 +94,17 @@ warp_trace<T>::~warp_trace () {
   file_handle = nullptr;
 }
 
+
+template <typename T2> 
+inline int pack(T2 value, std::vector <unsigned char>& v) {
+  #pragma unroll
+  for (auto i = 0; i < sizeof(T2); ++ i) {
+    v.push_back((unsigned char) (value & 0x00FF));
+    value = value >> 8;
+  }
+  return 0;
+}
+
 /**
  * @brief 
  * 
@@ -234,14 +245,5 @@ std::ostream& operator<<(std::ostream& os, warp_trace<T>& wt) {
   return os;
 }
 
-template <typename T2> 
-inline int pack(T2 value, std::vector <unsigned char>& v) {
-  #pragma unroll
-  for (auto i = 0; i < sizeof(T2); ++ i) {
-    v.push_back((unsigned char) (value & 0x00FF));
-    value = value >> 8;
-  }
-  return 0;
-}
 
 #endif  // WARP_TRACE_HPP

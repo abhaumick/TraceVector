@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <random>
+#include <algorithm>
 
 #include "src/trace_vector.hpp"
 #include "src/tb_trace.hpp"
@@ -54,11 +55,11 @@ int testWarpTrace(void) {
   auto& w0 = tv.get_tb_trace().warps[0];
   w0->init(f);
 
-  for (auto i = 0; i < w0->size(); ++ i) {
+  for (auto i = 0U; i < w0->size(); ++ i) {
     std::cout << w0->at(i) << "\n";
   }
 
-  for (auto i = 0; i < w0->size(); ++ i) {
+  for (auto i = 0U; i < w0->size(); ++ i) {
     std::cout << (*w0)[i] << "\n";
   }
 
@@ -74,7 +75,7 @@ int testTbTrace(void) {
 
   std::vector <tb_trace <std::string>> tb;
   tb.emplace_back();
-  tb[0].init("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg", 0);
+  tb[0].init("trace.log", 0);
 
   std::cout << "# Warps = " << tb[0].size() << "\n" ;
 
@@ -111,7 +112,7 @@ int testTbTrace(void) {
 
 int testToBytes(void) {
   tb_trace <std::string> tb;
-  tb.init("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg", 0);
+  tb.init("trace.log", 0);
 
   std::vector <unsigned char> v;
   tb.warps[4].to_bytes(v);
@@ -130,9 +131,9 @@ int testGpuTrace(void) {
   std::vector <tb_trace <std::string>> tb;
   size_t offset = 0;
   tb.reserve(numTB);
-  for (auto idx = 0; idx < numTB; ++ idx) {
+  for (auto idx = 0U; idx < numTB; ++ idx) {
     tb.emplace_back();
-    tb[idx].init("D:/Work/Purdue/Research/TraceVector/trace.log", offset);
+    tb[idx].init("trace.log", offset);
     offset = tb[idx].get_file_end();
     // std::cout << idx << " Done @ " << offset << "\n";
   }
