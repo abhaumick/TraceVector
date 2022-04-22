@@ -7,3 +7,6 @@ build/
 
 # Visual Studio Code
 .vscode/
+
+# Python venv
+.py.3.7/
