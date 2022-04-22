@@ -19,6 +19,8 @@
 const unsigned numTB = 10;
 const unsigned sample_size = 100;
 
+const auto testSize = 1000000; 
+
 int testWarpTrace();
 int testTbTrace();
 int testGpuTrace();
@@ -127,15 +129,58 @@ int testGpuTrace(void) {
 
   std::vector <tb_trace <std::string>> tb;
   size_t offset = 0;
-  tb.reserve(2);
+  tb.reserve(numTB);
   for (auto idx = 0; idx < numTB; ++ idx) {
     tb.emplace_back();
-    tb[idx].init("D:/Work/Purdue/Research/TraceVector/traces/kernel-1.traceg", offset);
+    tb[idx].init("D:/Work/Purdue/Research/TraceVector/trace.log", offset);
     offset = tb[idx].get_file_end();
-    std::cout << idx << " Done @ " << offset << "\n";
+    // std::cout << idx << " Done @ " << offset << "\n";
   }
 
-  std::cout << "# Warps = " << tb[0].size() << "\n" ;
+  // Generate uniform random sample
+  std::random_device rand_device;
+  std::mt19937_64 mersenne_engine(rand_device());
+  
+  std::uniform_int_distribution <unsigned> dist_tb(0, numTB - 1);
+  auto tb_indexes = std::vector <unsigned> (testSize);
+  auto tb_gen = [&dist_tb, &mersenne_engine](){ return dist_tb(mersenne_engine); };
+  std::generate(tb_indexes.begin(), tb_indexes.end(), tb_gen);
+
+  auto warp_indexes = std::vector <unsigned> (testSize);
+  std::uniform_int_distribution <unsigned> dist_warp(0, 10000);
+  auto warp_gen = [&dist_warp, &mersenne_engine](){ return dist_warp(mersenne_engine); };
+  std::generate(warp_indexes.begin(), warp_indexes.end(), warp_gen);
+
+  auto instr_indexes = std::vector <unsigned> (testSize);
+  std::uniform_int_distribution <unsigned> dist_instr(0, 10000);
+  auto instr_gen = [&dist_instr, &mersenne_engine](){ return dist_instr(mersenne_engine); };
+  std::generate(instr_indexes.begin(), instr_indexes.end(), instr_gen);
+
+  size_t correct_count = 0;
+  for (auto i = 0; i < testSize; ++ i) {
+    auto tb_idx = tb_indexes[i];
+    auto num_warps = tb[tb_idx].size();
+    auto warp_idx = warp_indexes[i] % num_warps;
+    auto num_instr = tb[tb_idx].warps[warp_idx].size();
+    auto instr_idx = instr_indexes[i] % num_instr;
+    // std::cout << tb_idx << ", " << warp_idx << ", " << instr_idx ;
+    
+    auto paged_instr = tb[tb_idx].warps[warp_idx][instr_idx];
+    
+    std::string string_obj;
+    std::stringstream ss;
+    ss.str(string_obj);
+    ss << tb_idx << ", " << warp_idx << ", " << instr_idx << " ";
+
+    if (paged_instr.find(ss.str(), 0) != std::string::npos)
+      ++ correct_count;
+
+    // std::cout << ss.str() << "  " << paged_instr << " " 
+    //   << (paged_instr.find(ss.str(), 0) != std::string::npos) << " \n";
+  }
+
+  std::cout << "Correctly returned " << correct_count << " / " 
+    << testSize << " instruction strings" ;
 
   return 0;
 }
