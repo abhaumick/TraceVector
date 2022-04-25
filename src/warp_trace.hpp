@@ -31,7 +31,7 @@ public:
     addr_type size;
   } bytes_header;
 
-  warp_trace (unsigned w_id, unsigned n_instr);
+  warp_trace (unsigned w_id, unsigned n_instr, addr_type page_size = 0);
   ~warp_trace();
 
   /**
@@ -55,9 +55,9 @@ public:
 
   friend std::ostream& operator<<(std::ostream& o, const warp_trace<T>& wt);
 
-  unsigned page_size;
-  unsigned max_pages;
-  unsigned buffer_size;
+  unsigned _page_size;
+  unsigned _max_pages;
+  unsigned _buffer_size;
   std::map <addr_type, addr_type> page_map;
   std::set <addr_type> page_set;
   std::vector <addr_type> tag_array;
@@ -76,14 +76,16 @@ protected:
 };
 
 template <typename T>
-warp_trace<T>::warp_trace (unsigned w_id, unsigned n_instr) :
+warp_trace<T>::warp_trace (unsigned w_id, unsigned n_instr, addr_type page_size) :
   _id(w_id),
   _size(n_instr),
+  _page_size(page_size),
   LRU(0)
 {
-  page_size = TRACE_PAGE_SIZE;
-  max_pages = (n_instr + TRACE_PAGE_SIZE - 1) / TRACE_PAGE_SIZE; 
-  buffer_size = std::min(max_pages, (unsigned) TRACE_PAGE_BUFFER_SIZE);
+  if (page_size == 0)
+    _page_size = TRACE_PAGE_SIZE;
+  _max_pages = (n_instr + _page_size - 1) / _page_size; 
+  _buffer_size = std::min(_max_pages, (unsigned) TRACE_PAGE_BUFFER_SIZE);
 }
 
 template <typename T>
@@ -115,9 +117,9 @@ template <typename T>
 int warp_trace<T>::init(std::ifstream& handle) {
   file_handle = &handle;
 
-  page_buffer.reserve(buffer_size);
-  tag_array.resize(buffer_size);
-  for (auto page_id = 0U; page_id < buffer_size; ++ page_id) {
+  page_buffer.reserve(_buffer_size);
+  tag_array.resize(_buffer_size);
+  for (auto page_id = 0U; page_id < _buffer_size; ++ page_id) {
     page_buffer.emplace_back();
     auto retVal = fetch_page(page_id, page_id);
     assert((retVal == 0) && "Trace Page Fetch Failed");
@@ -128,8 +130,8 @@ int warp_trace<T>::init(std::ifstream& handle) {
 template <typename T>
 T& warp_trace<T>::at(unsigned index) {
   assert((index < _size) && "Warp Trace Index OutOfBounds");
-  uint64_t at_tag = index / page_size;
-  uint64_t at_offset = index % page_size;
+  uint64_t at_tag = index / _page_size;
+  uint64_t at_offset = index % _page_size;
 
   auto search_idx = page_set.find(at_tag);
   if (search_idx != page_set.end()) {
@@ -179,7 +181,7 @@ int warp_trace<T>::fetch_page(int page_tag, int index) {
   auto file_loc = page_map[page_tag];
   file_handle->seekg(file_loc, std::ios::beg);
 
-  auto fetch_size = std::min((addr_type) page_size, _size - (page_tag - 1) * page_size);
+  auto fetch_size = std::min((addr_type) _page_size, _size - (page_tag - 1) * _page_size);
   for (auto i = 0U; i < fetch_size; ++ i) {
     page.emplace_back();
     std::getline(*file_handle, page[i]);
@@ -200,7 +202,7 @@ int warp_trace<T>::evict_page(int index) {
 
 template <typename T>
 void warp_trace<T>::update_lru(int index) {
-  LRU = (LRU + 1) % buffer_size;
+  LRU = (LRU + 1) % _buffer_size;
 }
 
 template <typename T>
@@ -211,9 +213,9 @@ int warp_trace<T>::to_bytes(std::vector <unsigned char>& v) const {
 
   pack(_id, v);
   pack(_size, v);
-  pack(page_size, v);
-  pack(max_pages, v);
-  pack(buffer_size, v);
+  pack(_page_size, v);
+  pack(_max_pages, v);
+  pack(_buffer_size, v);
   pack(LRU, v);
   pack(MRI, v);
 
@@ -232,10 +234,10 @@ int warp_trace<T>::to_bytes(std::vector <unsigned char>& v) const {
 template <typename T>
 std::ostream& operator<<(std::ostream& os, warp_trace<T>& wt) {
   os << "Warp " << wt.id() << " with " << wt.size() << " instructions. \n";
-  os << wt.buffer_size << " pages of size " << wt.buffer_size;
+  os << wt._buffer_size << " pages of size " << wt._buffer_size;
   os << " x " << typeid(T).name() << "\n";
   os << "Page Map: \n";
-  for (auto idx = 0U; idx < wt.buffer_size; ++ idx) {
+  for (auto idx = 0U; idx < wt._buffer_size; ++ idx) {
     os << " " << idx << " -> " << wt.tag_array[idx];
     if (idx == wt.LRU) os << " <- LRU ";
     os << " , ";
