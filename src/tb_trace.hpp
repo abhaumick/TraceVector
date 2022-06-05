@@ -22,11 +22,6 @@
 
 #include "warp_trace.hpp"
 
-#ifndef _dim3
-typedef struct {
-  unsigned x, y, z;
-} _dim3;
-#endif
 
 template <typename T>
 class tb_trace {
@@ -48,6 +43,7 @@ private:
   size_t _size;             /// Number of warps
   size_t _page_size;
   bool _init_done;
+  unsigned _trace_version;
 
 public:
   tb_trace();
@@ -61,7 +57,7 @@ public:
   constexpr size_t get_file_start(void) {return file_trace_start; }
   constexpr size_t get_file_end(void) {return file_trace_end; }
 
-  int init(const std::string& file_path, size_t file_offset);
+  int init(const std::string& file_path, size_t file_offset, unsigned trace_version = 0);
 
   int parse_tb();
 
@@ -125,7 +121,7 @@ tb_trace<T>::~tb_trace() {
 }
 
 template <typename T>
-int tb_trace<T>::init(const std::string& file_path, size_t file_offset) {
+int tb_trace<T>::init(const std::string& file_path, size_t file_offset, unsigned trace_version) {
   this->file_path = file_path;
   if (file_handle.is_open()) {
     file_handle.close();
@@ -133,11 +129,14 @@ int tb_trace<T>::init(const std::string& file_path, size_t file_offset) {
   file_handle.open(file_path.c_str());
 
   if (! file_handle.is_open()) {
-    std::cout << "Unable to open file " << file_path.c_str() << " @ \n" ;
+    std::cout << "Unable to open file " << file_path.c_str() << " @ "
+      << file_offset << " \n";
       // << std::filesystem::current_path() << "\n";
     return -1;
   }
   else {
+    std::cout << "Opened file " << file_path.c_str() << " @ "
+      << file_offset << " trace_v" << trace_version << " \n" ;
     // Seek to file_offset
     file_handle.seekg(file_offset, file_handle.beg);
 
@@ -146,10 +145,12 @@ int tb_trace<T>::init(const std::string& file_path, size_t file_offset) {
 
     //  Init the warps created
     for (auto& warp : warps) {
-      warp.init(file_handle);
+      warp.init(file_path, file_offset);
+      warp.trace_version = trace_version;
     }
   }
   _init_done = true;
+  _trace_version = trace_version;
   return 0;
 }
 
@@ -227,6 +228,7 @@ int tb_trace<T>::map_tb_to_file(size_t offset) {
         if (warp_id >= warps.size()) {
           warps.emplace_back(warp_id, num_instrs);
           _warp_set.insert(warp_id);
+          warps[warp_id].set_tb_id(_id);
           ++ _size;
         }
         else {

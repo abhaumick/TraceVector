@@ -11,6 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
 #include <string>
 #include <map>
 #include <set>
@@ -19,6 +20,12 @@
 
 #define TRACE_PAGE_SIZE ((10))
 #define TRACE_PAGE_BUFFER_SIZE ((10))
+
+#ifndef _dim3
+typedef struct {
+  unsigned x, y, z;
+} _dim3;
+#endif
 
 template <typename T>
 class warp_trace {
@@ -45,8 +52,11 @@ public:
 
   constexpr unsigned id(void) const { return _id; }
   constexpr addr_type size(void) const { return _size; }
+  void set_tb_id(_dim3 tb_id) { _tb_id = tb_id; }
+  std::string get_id(void) const;
 
   int init (std::ifstream& handle);
+  int init (const std::string& handle, size_t file_offset);
 
   int to_bytes(std::vector <unsigned char>& v) const;
   
@@ -62,11 +72,15 @@ public:
   std::set <addr_type> page_set;
   std::vector <addr_type> tag_array;
   std::ifstream* file_handle;
+  std::string file_path;
   std::vector <page_type> page_buffer;
   unsigned LRU, MRI;
+  unsigned trace_version;
+  bool private_file_handle;
 
 protected:
   unsigned _id;
+  _dim3 _tb_id;
   addr_type _size;
 
   int fetch_page(int page_num, int index);
@@ -80,7 +94,9 @@ warp_trace<T>::warp_trace (unsigned w_id, unsigned n_instr, addr_type page_size)
   _id(w_id),
   _size(n_instr),
   _page_size(page_size),
-  LRU(0)
+  LRU(0),
+  private_file_handle(false),
+  file_handle(nullptr)
 {
   if (page_size == 0)
     _page_size = TRACE_PAGE_SIZE;
@@ -90,6 +106,14 @@ warp_trace<T>::warp_trace (unsigned w_id, unsigned n_instr, addr_type page_size)
 
 template <typename T>
 warp_trace<T>::~warp_trace () {
+  if (private_file_handle) {
+    if (file_handle != nullptr) {
+      if (file_handle->is_open()) {
+        file_handle->close();
+      }
+      delete file_handle;
+    }
+  }
   page_map.clear();
   page_buffer.clear();
   page_set.clear();
@@ -104,6 +128,15 @@ inline int pack(T2 value, std::vector <unsigned char>& v) {
     value = value >> 8;
   }
   return 0;
+}
+
+template <typename T>
+std::string warp_trace<T>::get_id(void) const {
+  std::string str;
+  std::stringstream ss(str);
+  ss << " tb " << _tb_id.x << "," << _tb_id.y << "," << _tb_id.z << " ";
+  ss << " w " << _id << " ";
+  return ss.str();
 }
 
 /**
@@ -121,10 +154,42 @@ int warp_trace<T>::init(std::ifstream& handle) {
   tag_array.resize(_buffer_size);
   for (auto page_id = 0U; page_id < _buffer_size; ++ page_id) {
     page_buffer.emplace_back();
+    page_buffer[page_id].reserve(_page_size);
     auto retVal = fetch_page(page_id, page_id);
     assert((retVal == 0) && "Trace Page Fetch Failed");
   }
   return 0;
+}
+
+template <typename T>
+int warp_trace<T>::init(const std::string& file_path, size_t file_offset) {
+  private_file_handle = true;
+  file_handle = new std::ifstream();
+  file_handle->open(file_path.c_str());
+
+  if (! file_handle->is_open()) {
+    std::cout << "Unable to open file " << file_path.c_str() << " @ "
+      << file_offset << " \n";
+      // << std::filesystem::current_path() << "\n";
+    return -1;
+  }
+
+  if (file_handle->is_open()) {
+    this->file_path = file_path;
+    // Seek to file_offset
+    file_handle->seekg(file_offset, file_handle->beg);
+
+    page_buffer.reserve(_buffer_size);
+    tag_array.resize(_buffer_size);
+    for (auto page_id = 0U; page_id < _buffer_size; ++ page_id) {
+      page_buffer.emplace_back();
+      page_buffer[page_id].reserve(_page_size);
+      auto retVal = fetch_page(page_id, page_id);
+      assert((retVal == 0) && "Trace Page Fetch Failed");
+    }
+    return 0;
+  }
+  return -1;
 }
 
 template <typename T>
@@ -181,11 +246,30 @@ int warp_trace<T>::fetch_page(int page_tag, int index) {
   auto file_loc = page_map[page_tag];
   file_handle->seekg(file_loc, std::ios::beg);
 
-  auto fetch_size = std::min((addr_type) _page_size, _size - (page_tag - 1) * _page_size);
+  auto fetch_size = std::min((addr_type) _page_size, _size - (page_tag * _page_size));
   for (auto i = 0U; i < fetch_size; ++ i) {
     page.emplace_back();
     std::getline(*file_handle, page[i]);
+    if (page[i].empty()) {
+      // assert(0 && "getline empty line");
+      if(file_handle->fail() || file_handle->bad()) {
+        std::cout << " ERROR !!! \n\n\n" << std::flush;
+        // page[i].clear();
+        // file_handle->clear();
+        // i = 0;
+      }
+    }
   }
+
+  // Check full page empty
+  bool empty_page = true;
+  for (auto line : page_buffer[index]) {
+    if (! line.empty())
+      empty_page = false;
+  }
+  if (empty_page)
+    std::cout << "Empty PAGE !!!! \n\n\n" << std::flush;
+  
   // Update page_set, LRU
   page_set.insert(page_tag); 
   tag_array[index] = page_tag;
