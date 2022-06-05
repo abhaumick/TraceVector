@@ -22,10 +22,10 @@
 
 #include "warp_trace.hpp"
 
-#ifndef dim3
+#ifndef _dim3
 typedef struct {
   unsigned x, y, z;
-} dim3;
+} _dim3;
 #endif
 
 template <typename T>
@@ -44,7 +44,7 @@ protected:
   size_t file_trace_end;
 
 private:
-  dim3 _id;
+  _dim3 _id;
   size_t _size;             /// Number of warps
   size_t _page_size;
   bool _init_done;
@@ -55,7 +55,7 @@ public:
   // tb_trace(const tb_trace<T>& t);
   ~tb_trace();
 
-  constexpr dim3 id(void) const { return _id; }
+  constexpr _dim3 id(void) const { return _id; }
   constexpr size_t size(void) const { return _size; }
 
   constexpr size_t get_file_start(void) {return file_trace_start; }
